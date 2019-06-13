@@ -1,9 +1,19 @@
-;;; -*- lexical-binding: t -*-
-
-
+; -*- lexical-binding: t -*-
 ;; ====
 ;; INIT
 
+;; trying to fix some Re-entering top level after C stack overflow error
+;; (setq max-specpdl-size 300)
+;; (setq max-lisp-eval-depth 200)
+
+;; Obviously utf-8
+(prefer-coding-system 'utf-8)
+
+;; Enable fullscreen frame on startup
+(add-to-list 'initial-frame-alist '(fullscreen . maximized))
+
+;; turn off bell
+(setq ring-bell-function 'ignore)
 
 ;; Package system and sources.
 (require 'package)
@@ -18,7 +28,6 @@
 (add-to-list 'package-archives '("gnu" . (concat proto "://elpa.gnu.org/packages/")))))
 
 (package-initialize)
-
 
 ;; We will use 'use-package' to install and configure packages.
 (unless (package-installed-p 'use-package)
@@ -39,8 +48,17 @@
 
 
 ;; Store custom-file separately, don't freak out when it's not found
-(setq custom-file "~/.emacs.d/custom.el")
+(setq custom-file "~/castlemacs/custom.el")
 (load custom-file 'noerror)
+
+;; ;; Path for plantuml.jar for org-uml rendering
+(setq org-plantuml-jar-path
+      (expand-file-name "~/castlemacs/plantuml.jar"))
+
+;;Store session history in desktop file on exit and opening it on
+;; startup commented because if you have 50 buffers, they will be
+;; opened simultaneously on the next opening of Emacs.
+;; (desktop-save-mode 1)
 
 
 ;; Set path for private config. private.el is not part of Castlemacs and you can use it for your personal
@@ -58,16 +76,12 @@
 
 
 ;; Both command keys are 'Super'
-(setq mac-right-command-modifier 'super)
-(setq mac-command-modifier 'super)
-
+;;(setq mac-right-command-modifier 'super)
+;;(setq mac-command-modifier 'super)
 
 ;; Option or Alt is naturally 'Meta'
-(setq mac-option-modifier 'meta)
+;;(setq mac-option-modifier 'meta)
 
-
-;; Right Alt (option) can be used to enter symbols like em dashes '—' and euros '€' and stuff.
-(setq mac-right-option-modifier 'nil)
 
 ;; Control is control, and you also need to change Caps Lock to Control in the Keyboard
 ;; preferences in macOS.
@@ -126,68 +140,74 @@
 (global-unset-key (kbd "s-p"))     ; Don't print
 
 
-;; We need Emacs kill ring and system clipboard to be independent. Simpleclip is the solution to that.
-(use-package simpleclip
-  :config
-  (simpleclip-mode 1))
-
-
-;; Things you'd expect from macOS app.
-(global-set-key (kbd "s-s") 'save-buffer)             ;; save
-(global-set-key (kbd "s-S") 'write-file)              ;; save as
-(global-set-key (kbd "s-q") 'save-buffers-kill-emacs) ;; quit
-(global-set-key (kbd "s-a") 'mark-whole-buffer)       ;; select all
-;; (global-set-key (kbd "s-z") 'undo)
-
-
 ;; Delete trailing spaces and add new line in the end of a file on save.
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
 (setq require-final-newline t)
 
 
 ;; Linear undo and redo.
-(use-package undo-tree
-  :diminish undo-tree-mode
-  :init
-  (progn
-    (global-undo-tree-mode)
-    (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/tmp/undo"))
-          undo-tree-auto-save-history t
-          undo-tree-visualizer-timestamps t
-          undo-tree-visualizer-diff t)))
+(global-undo-tree-mode 1)
+;; (use-package undo-tree
+;;   :diminish undo-tree-mode
+;;   :init
+;;   (progn
+;;     (global-undo-tree-mode)
+;;     (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/tmp/undo"))
+;;           undo-tree-auto-save-history t
+;;           undo-tree-visualizer-timestamps t
+;;           undo-tree-visualizer-diff t)))
 
-(global-set-key (kbd "s-z") 'undo-tree-undo)
-(global-set-key (kbd "s-Z") 'undo-tree-redo)
+;; (global-set-key (kbd "s-z") 'undo-tree-undo)
+;; (global-set-key (kbd "s-Z") 'undo-tree-redo)
 
 
 ;; =======
-;; VISUALS
+;; VISUAL
+
+;; Show numbers for every window for fast switching
+;; you could switch to new window as simple as M-1, M-2 ... M-0
+;; delete window - C-2 M-2 или C-u 2 M-2 - закроется окно 2
+
+(setq winum-keymap
+    (let ((map (make-sparse-keymap)))
+      (define-key map (kbd "C-`") 'winum-select-window-by-number)
+      (define-key map (kbd "C-²") 'winum-select-window-by-number)
+      (define-key map (kbd "<C-f1>") 'winum-select-window-1)
+      (define-key map (kbd "<C-f2>") 'winum-select-window-2)
+      (define-key map (kbd "<C-f3>") 'winum-select-window-3)
+      (define-key map (kbd "<C-f4>") 'winum-select-window-4)
+      (define-key map (kbd "<C-f5>") 'winum-select-window-5)
+      (define-key map (kbd "<C-f6>") 'winum-select-window-6)
+      (define-key map (kbd "<C-f7>") 'winum-select-window-7)
+      (define-key map (kbd "<c-f8>") 'winum-select-window-8)
+      (define-key map (kbd "<c-f9>") 'winum-select-window-9)
+      (define-key map (kbd "<c-f10>") 'winum-select-window-10)
+      map))
+
+(require 'winum)
+
+(set-face-attribute 'winum-face nil :weight 'bold)
+
+(setq window-numbering-scope            'global
+      winum-reverse-frame-list          nil
+      winum-auto-assign-0-to-minibuffer t
+      winum-assign-func                 'my-winum-assign-func
+      winum-auto-setup-mode-line        t
+      winum-format                      " [ %s ] "
+      winum-mode-line-position          1
+      winum-ignored-buffers             '(" *which-key*"))
+
+(winum-mode)
+
+;; Enable line numbers
+;; (setq-default display-line-numbers 'visual)
 
 
-;; Enable transparent title bar on macOS
-(when (memq window-system '(mac ns))
-  (add-to-list 'default-frame-alist '(ns-appearance . light)) ;; {light, dark}
-  (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)))
 
-
-;; Font
+;;Font
 (when (member "menlo" (font-family-list))
   (set-face-attribute 'default nil :font "Menlo 15"))
-(setq-default line-spacing 2)
-
-
-;; Nice and simple default light theme.
-(load-theme 'tsdh-light)
-
-
-;; Pretty icons
-(use-package all-the-icons)
-;; MUST DO M-x all-the-icons-install-fonts after
-
-
-;; Hide toolbar and scroll bar
-(tool-bar-mode -1)
-(scroll-bar-mode -1)
+(setq-default line-spacing 1)
 
 
 ;; Always wrap lines
@@ -215,33 +235,8 @@
 
 
 ;; Set colors to distinguish between active and inactive windows
-(set-face-attribute 'mode-line nil :background "SlateGray1")
-(set-face-attribute 'mode-line-inactive nil :background "grey93")
-
-
-;; File tree
-(use-package neotree
-  :config
-  (setq neo-window-width 32
-        neo-create-file-auto-open t
-        neo-banner-message nil
-        neo-show-updir-line t
-        neo-window-fixed-size nil
-        neo-vc-integration nil
-        neo-mode-line-type 'neotree
-        neo-smart-open t
-        neo-show-hidden-files t
-        neo-mode-line-type 'none
-        neo-auto-indent-point t)
-  (setq neo-theme (if (display-graphic-p) 'nerd 'arrow))
-  (setq neo-hidden-regexp-list '("venv" "\\.pyc$" "~$" "\\.git" "__pycache__" ".DS_Store"))
-  (global-set-key (kbd "s-B") 'neotree-toggle))           ;; Cmd+Shift+b toggle tree
-
-
-;; Show vi-like tilde in the fringe on empty lines.
-(use-package vi-tilde-fringe
-  :config
-  (global-vi-tilde-fringe-mode 1))
+;; (set-face-attribute 'mode-line nil :background "SlateGray1")
+;; (set-face-attribute 'mode-line-inactive nil :background "grey93")
 
 
 ;; Show full path in the title bar.
@@ -259,28 +254,15 @@
 (setq-default c-basic-indent 2)
 
 
-;; Show keybindings cheatsheet
+;; Show keybindings cheat sheet
 (use-package which-key
   :config
   (which-key-mode)
   (setq which-key-idle-delay 0.5))
 
 
-;; Disable blinking cursor.
-(blink-cursor-mode 0)
-
-
 ;; ================
 ;; BASIC NAVIGATION
-
-
-;; Move around with Cmd+i/j/k/l. This is not for everybody, and it takes away four very well placed
-;; key combinations, but if you get used to using these keys instead of arrows, it will be worth it,
-;; I promise.
-(global-set-key (kbd "s-i") 'previous-line)
-(global-set-key (kbd "s-k") 'next-line)
-(global-set-key (kbd "s-j") 'left-char)
-(global-set-key (kbd "s-l") 'right-char)
 
 
 ;; Kill line with CMD-Backspace. Note that thanks to Simpleclip, killing doesn't rewrite the system clipboard.
@@ -290,14 +272,14 @@
 (global-set-key (kbd "M-S-<backspace>") 'kill-word)
 
 
-;; Use Cmd for movement and selection.
-(global-set-key (kbd "s-<right>") (kbd "C-e"))        ;; End of line
-(global-set-key (kbd "S-s-<right>") (kbd "C-S-e"))    ;; Select to end of line
-(global-set-key (kbd "s-<left>") (kbd "M-m"))         ;; Beginning of line (first non-whitespace character)
-(global-set-key (kbd "S-s-<left>") (kbd "M-S-m"))     ;; Select to beginning of line
+;; ;; Use Cmd for movement and selection.
+;; (global-set-key (kbd "s-<right>") (kbd "C-e"))        ;; End of line
+;; (global-set-key (kbd "S-s-<right>") (kbd "C-S-e"))    ;; Select to end of line
+;; (global-set-key (kbd "s-<left>") (kbd "M-m"))         ;; Beginning of line (first non-whitespace character)
+;; (global-set-key (kbd "S-s-<left>") (kbd "M-S-m"))     ;; Select to beginning of line
 
-(global-set-key (kbd "s-<up>") 'beginning-of-buffer)  ;; First line
-(global-set-key (kbd "s-<down>") 'end-of-buffer)      ;; Last line
+;; (global-set-key (kbd "s-<up>") 'beginning-of-buffer)  ;; First line
+;; (global-set-key (kbd "s-<down>") 'end-of-buffer)      ;; Last line
 
 
 ;; Thanks to Bozhidar Batsov
@@ -326,8 +308,6 @@ point reaches the beginning or end of the buffer, stop there."
       (move-beginning-of-line 1))))
 
 (global-set-key (kbd "C-a") 'smarter-move-beginning-of-line)
-(global-set-key (kbd "s-<left>") 'smarter-move-beginning-of-line)
-
 
 ;; Many commands in Emacs write the current position into mark ring.
 ;; These custom functions allow for quick movement backward and forward.
@@ -389,8 +369,8 @@ point reaches the beginning or end of the buffer, stop there."
   (forward-line -1)
   (indent-according-to-mode))
 
-(global-set-key (kbd "s-<return>") 'smart-open-line)            ;; Cmd+Return new line below
-(global-set-key (kbd "s-S-<return>") 'smart-open-line-above)    ;; Cmd+Shift+Return new line above
+(global-set-key (kbd "C-<return>") 'smart-open-line)            ;; Cmd+Return new line below
+(global-set-key (kbd "C-S-<return>") 'smart-open-line-above)    ;; Cmd+Shift+Return new line above
 
 
 ;; Upcase and lowercase word or region, if selected.
@@ -423,18 +403,11 @@ point reaches the beginning or end of the buffer, stop there."
 ;; =================
 ;; WINDOW MANAGEMENT
 
-
-;; This is rather radical, but saves from a lot of pain in the ass.
-;; When split is automatic, always split windows vertically
-(setq split-height-threshold 0)
-(setq split-width-threshold nil)
-
-
 ;; Go to other windows easily with one keystroke Cmd-something.
-(global-set-key (kbd "s-1") (kbd "C-x 1"))  ;; Cmd-1 kill other windows (keep 1)
-(global-set-key (kbd "s-2") (kbd "C-x 2"))  ;; Cmd-2 split horizontally
-(global-set-key (kbd "s-3") (kbd "C-x 3"))  ;; Cmd-3 split vertically
-(global-set-key (kbd "s-0") (kbd "C-x 0"))  ;; Cmd-0...
+;; (global-set-key (kbd "s-1") (kbd "C-x 1"))  ;; Cmd-1 kill other windows (keep 1)
+;; (global-set-key (kbd "s-2") (kbd "C-x 2"))  ;; Cmd-2 split horizontally
+;; (global-set-key (kbd "s-3") (kbd "C-x 3"))  ;; Cmd-3 split vertically
+;; (global-set-key (kbd "s-0") (kbd "C-x 0"))  ;; Cmd-0...
 (global-set-key (kbd "s-w") (kbd "C-x 0"))  ;; ...and Cmd-w to close current window
 
 
@@ -497,9 +470,9 @@ point reaches the beginning or end of the buffer, stop there."
 ;; Swiper is a better local finder.
 (use-package swiper
   :config
-  (global-set-key "\C-s" 'swiper)       ;; Default Emacs Isearch forward...
-  (global-set-key "\C-r" 'swiper)       ;; ... and Isearch backward replaced with Swiper
-  (global-set-key (kbd "s-f") 'swiper)) ;; Cmd+f find text
+  ;; (global-set-key "\C-s" 'swiper)       ;; Default Emacs Isearch forward...
+  ;; (global-set-key "\C-r" 'swiper)       ;; ... and Isearch backward replaced with Swiper
+  (global-set-key (kbd "s-f") 'swiper-isearch)) ;; Cmd+f find text
 
 
 ;; Better menus with Counsel (a layer on top of Ivy)
@@ -528,7 +501,7 @@ point reaches the beginning or end of the buffer, stop there."
   (counsel-projectile-mode 1)
   (global-set-key (kbd "C-x C-f") 'counsel-find-file)
   (global-set-key (kbd "s-p") 'counsel-projectile-find-file)         ;; Cmd+p open file in current project
-  (global-set-key (kbd "s-F") 'counsel-projectile-ag))     ;; Cmd+Shift+F search in current git repository
+  (global-set-key (kbd "s-F") 'counsel-projectile-git-grep))     ;; Cmd+Shift+F search in current git repository
 
 
 (setq projectile-completion-system 'ivy)             ;; Use Ivy in Projectile
@@ -543,6 +516,8 @@ point reaches the beginning or end of the buffer, stop there."
   :config
   (global-set-key (kbd "s-g") 'magit-status))   ;; Cmd+g for git status
 
+(use-package forge
+  :after magit)
 
 ;; Show changes in the gutter
 (use-package git-gutter
@@ -554,17 +529,6 @@ point reaches the beginning or end of the buffer, stop there."
   (set-face-foreground 'git-gutter:deleted "red"))
 
 
-;; ========
-;; TERMINAL
-
-
-(use-package shell-pop
-  :config
-  (custom-set-variables
-   '(shell-pop-shell-type (quote ("ansi-term" "*ansi-term*" (lambda nil (ansi-term shell-pop-term-shell)))))
-   '(shell-pop-universal-key "s-=")))
-
-
 ;; ===============
 ;; CODE COMPLETION
 
@@ -572,7 +536,8 @@ point reaches the beginning or end of the buffer, stop there."
 (use-package company
   :config
   (setq company-idle-delay 0.1)
-  (setq company-global-modes '(not org-mode))
+  ;; (setq company-global-modes '(not org-mode))
+  (setq company-global-modes '(not inf-ruby-mode))
   (setq company-minimum-prefix-length 1)
   (add-hook 'after-init-hook 'global-company-mode))
 
@@ -662,6 +627,9 @@ point reaches the beginning or end of the buffer, stop there."
   (add-hook 'css-mode-hook  'emmet-mode)) ;; enable Emmet's css abbreviation.
 ;; Ctrl+j or Ctrl+Enter to expand
 
+;; Ruby
+(add-to-list 'auto-mode-alist
+             '("\\(?:\\.rb\\|ru\\|rake\\|thor\\|jbuilder\\|gemspec\\|podspec\\|/\\(?:Gem\\|Rake\\|Cap\\|Thor\\|Vagrant\\|Guard\\|Pod\\)file\\)\\'" . enh-ruby-mode))
 
 ;; ========
 ;; ORG MODE
@@ -687,12 +655,67 @@ point reaches the beginning or end of the buffer, stop there."
 (setq org-agenda-files '("~/org"))
 
 
-;; Open config file by pressing C-x and then C
-(global-set-key (kbd "C-x C") (lambda () (interactive) (find-file "~/.emacs.d/init.el")))
+;; ========================= RUBY LANGUAGE CONFIG =========================
 
-;; Open private config file by pressing C-x and then c
-;; Contain custom settings to private.el to ensure easy Castlemacs updates.
-(global-set-key (kbd "C-x c") (lambda () (interactive) (find-file "~/.emacs.d/private.el")))
+(setq rbenv-installation-dir "~/.rbenv")     ;; for proper version management
+(add-hook 'enh-ruby-mode-hook 'robe-mode)       ;; robe mode for repl
+(eval-after-load 'company
+  '(push 'company-robe company-backends))
 
-;; =======
-;; THE END
+(require 'flymake-ruby)                         ;; for syntax checking
+(add-hook 'enh-ruby-mode-hook 'flymake-ruby-load)
+(add-hook 'enh-ruby-mode-hook #'rubocop-mode)
+
+(add-hook 'compilation-filter-hook 'inf-ruby-auto-enter)
+(add-hook 'after-init-hook 'inf-ruby-switch-setup) ;; for rspec mode to work with binding.pry
+(setq enh-ruby-add-encoding-comment-on-save nil)
+
+;; ========================= ELIXIR LANGUAGE CONFIG =========================
+
+(require 'alchemist)
+(add-to-list 'elixir-mode-hook 'alchemist-mode)
+;; (add-to-list 'elixir-mode-hook (alchemist-mode +1))
+
+;; (require 'flymake-elixir)
+;; (add-hook 'elixir-mode-hook 'flymake-elixir-load)
+
+;; (require 'lsp-mode)
+;; (add-hook 'elixir-mode-hook #'lsp)
+
+;; (use-package lsp-mode
+;;     :commands lsp
+;;     :ensure t
+;;     :diminish lsp-mode
+;;     :hook
+;;     (elixir-mode . lsp)
+;;     :init
+;;     (add-to-list 'exec-path "~/elixir-ls/release/language_server.sh"))
+
+;; (require 'eglot)
+;; (add-to-list 'eglot-server-programs (elixir-mode "/Users/lyosha/elixir-ls/release/language_server.sh"))
+;; (add-hook 'elixir-mode-hook 'eglot)
+
+;;                           |----------------|
+;; ========================= | CLOJURE CONFIG | =========================
+;;                           |----------------|
+
+(unless (package-installed-p 'clojure-mode)
+  (package-install 'clojure-mode))
+(require 'clojure-mode-extra-font-locking)
+(add-hook 'clojure-mode-hook #'smartparens-strict-mode)
+(add-hook 'clojure-mode-hook #'rainbow-delimiters-mode)
+(add-hook 'clojure-mode-hook #'aggressive-indent-mode)
+
+;; Specify the Clojure back-end we want to use in Org-mode.
+;; I personally use Cider, but one could specify Slime
+(setq org-babel-clojure-backend 'cider)
+; Addition of the org-babel-clojure-nrepl-timeout setting
+(defvar org-babel-clojure-nrepl-timeout nil)
+
+;;                           |-----------------------------|
+;; ========================= | org babel config restclient | =========================
+;;                           |-----------------------------|
+(require 'restclient)
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((restclient . t)))
