@@ -7,3 +7,7 @@ projectile-bookmarks.eld
 bookmarks
 auto-save-list/
 README.html
+eshell/*
+forge-database.sqlite
+session*
+transient*
